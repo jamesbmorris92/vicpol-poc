@@ -1,0 +1,377 @@
+<project name="PERSONS_OF_INTEREST" threads="1" pubsub="auto" heartbeat-interval="1">
+  <metadata>
+    <meta id="studioUploadedBy">videmo</meta>
+    <meta id="studioUploaded">1534824313092</meta>
+    <meta id="studioModifiedBy">videmo</meta>
+    <meta id="studioModified">1534987124996</meta>
+    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":355,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":355,"y":1220},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":350,"y":940},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_NO_GO_AREAS":{"x":920,"y":10},"VI_PERSON":{"x":620,"y":10}}}</meta>
+  </metadata>
+  <contqueries>
+    <contquery name="PERSONS_OF_INTEREST_CQ" index="pi_EMPTY">
+      <windows>
+        <window-source pubsub="true" index="pi_EMPTY" insert-only="true" autogen-key="true" name="SOURCE">
+          <schema>
+            <fields>
+              <field name="id" type="string" key="true"/>
+              <field name="geometry" type="string"/>
+              <field name="properties" type="string"/>
+            </fields>
+          </schema>
+        </window-source>
+        <window-functional pubsub="true" name="PARSER">
+          <description><![CDATA[This window parses the location JSON into a flat location event.]]></description>
+          <schema>
+            <fields>
+              <field name="id" type="string" key="true"/>
+              <field name="latitude" type="double"/>
+              <field name="longitude" type="double"/>
+              <field name="timestamp" type="stamp"/>
+              <field name="device_id" type="string"/>
+              <field name="battery_level" type="string"/>
+              <field name="timestamp_readable" type="string"/>
+            </fields>
+          </schema>
+          <function-context>
+            <properties>
+              <property-json name="geometryJson"><![CDATA[$geometry]]></property-json>
+              <property-json name="propertiesJson"><![CDATA[$properties]]></property-json>
+            </properties>
+            <functions>
+              <function name="latitude"><![CDATA[number(json(#geometryJson,'coordinates[1]'))]]></function>
+              <function name="longitude"><![CDATA[number(json(#geometryJson,'coordinates[0]'))]]></function>
+              <function name="timestamp"><![CDATA[timeParse(json(#propertiesJson,'timestamp'),'%Y-%m-%dT%TZ')]]></function>
+              <function name="device_id"><![CDATA[json(#propertiesJson,'device_id')]]></function>
+              <function name="battery_level"><![CDATA[json(#propertiesJson,'battery_level')]]></function>
+              <function name="timestamp_readable"><![CDATA[json(#propertiesJson,'timestamp')]]></function>
+            </functions>
+          </function-context>
+          <connectors>
+            <connector class="fs" name="parsed_location" active="false">
+              <properties>
+                <property name="type"><![CDATA[sub]]></property>
+                <property name="snapshot"><![CDATA[false]]></property>
+                <property name="fsname"><![CDATA[/opt/sasinside/vicpol/data/parsed-location.csv]]></property>
+                <property name="fstype"><![CDATA[csv]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-functional>
+        <window-geofence pubsub="true" index="pi_EMPTY" name="GEOFENCE">
+          <geofence coordinate-type="geographic" autosize-mesh="true" max-meshcells-per-geometry="500" output-multiple-results="true" log-invalid-geometry="true"/>
+          <geometry desc-fieldname="name" x-fieldname="longitude" y-fieldname="latitude" radius-fieldname="radius" radius="0" data-separator=" "/>
+          <position x-fieldname="longitude" y-fieldname="latitude" lookupdistance="0"/>
+          <output geoid-fieldname="no_go_areas_id" geodesc-fieldname="description" geodistance-fieldname="distance" eventnumber-fieldname="eventnum"/>
+        </window-geofence>
+        <window-notification name="EMAIL_SENDER">
+          <description><![CDATA[This window sends an email to someone if a geofence is breached.]]></description>
+          <schema>
+            <fields>
+              <field name="timestamp" type="stamp"/>
+            </fields>
+          </schema>
+          <function-context>
+            <functions>
+              <function name="timestamp_readable"><![CDATA[$timestamp_readable]]></function>
+            </functions>
+          </function-context>
+          <smtp host="mailhost.fyi.sas.com" port="25"/>
+          <delivery-channels>
+            <email throttle-interval="5 minutes" name="test_email">
+              <email-info>
+                <sender><![CDATA[$device_id]]></sender>
+                <recipients><![CDATA[$device_id]]></recipients>
+                <subject><![CDATA[Warning]]></subject>
+                <from><![CDATA[POIWarningSystem]]></from>
+                <to><![CDATA[$device_id]]></to>
+              </email-info>
+              <email-contents>
+                <text-content name="test_warning"><![CDATA[Warning!
+ You are passing by a known criminal hotspot: $description with the distance of $distance
+This message was sent for the device $device_id.
+
+This email was sent at $timestamp_readable.]]></text-content>
+              </email-contents>
+            </email>
+          </delivery-channels>
+        </window-notification>
+        <window-compute pubsub="true" name="ALERT_CREATOR">
+          <description><![CDATA[This window performs the mapping from location data fields to fields that will be used to create the alert JSON for VI.]]></description>
+          <schema>
+            <fields>
+              <field name="id" type="string" key="true"/>
+              <field name="eventnum" type="int64" key="true"/>
+              <field name="alertingEventId" type="string"/>
+              <field name="actionableEntityType" type="string"/>
+              <field name="actionableEntityId" type="string"/>
+              <field name="score" type="int32"/>
+              <field name="alertOriginCd" type="string"/>
+              <field name="alertTypeCd" type="string"/>
+              <field name="recQueueId" type="string"/>
+              <field name="scenarioFiredEventId" type="string"/>
+              <field name="scenarioId" type="string"/>
+              <field name="scenarioDescription" type="string"/>
+              <field name="scenarioOriginCd" type="string"/>
+              <field name="displayFlg" type="string"/>
+              <field name="displayTypeCd" type="string"/>
+            </fields>
+          </schema>
+          <output>
+            <field-expr><![CDATA[id]]></field-expr>
+            <field-expr><![CDATA['person']]></field-expr>
+            <field-expr><![CDATA[person_id]]></field-expr>
+            <field-expr><![CDATA[100*(1/distance)]]></field-expr>
+            <field-expr><![CDATA['Person of Interest']]></field-expr>
+            <field-expr><![CDATA['Persons of Interest']]></field-expr>
+            <field-expr><![CDATA['queue_default']]></field-expr>
+            <field-expr><![CDATA[id]]></field-expr>
+            <field-expr><![CDATA[no_go_areas_id]]></field-expr>
+            <field-expr><![CDATA[description]]></field-expr>
+            <field-expr><![CDATA['Persons of Interest']]></field-expr>
+            <field-expr><![CDATA[true]]></field-expr>
+            <field-expr><![CDATA['text']]></field-expr>
+          </output>
+        </window-compute>
+        <window-functional pubsub="true" name="ALERT_JSON_CONSTRUCTOR">
+          <description><![CDATA[This window constructs the JSON alert.]]></description>
+          <schema>
+            <fields>
+              <field name="id" type="string" key="true"/>
+              <field name="eventnum" type="int64" key="true"/>
+              <field name="alertJson" type="string"/>
+            </fields>
+          </schema>
+          <function-context>
+            <functions>
+              <function name="alertJson"><![CDATA[string(
+	'{
+		"jsonLayout" : "nested",
+		"alertingEvents" : [
+			{
+				"alertingEventId": "',$alertingEventId,'",
+				"actionableEntityType": "',$actionableEntityType,'",
+				"actionableEntityId": "',$actionableEntityId,'",
+				"score": "',$score,'",
+				"alertOriginCd": "',$alertOriginCd,'",
+				"alertTypeCd": "',$alertTypeCd,'",
+				"recQueueId": "',$recQueueId,'",
+				"scenarioFiredEvents" : [
+					{
+						"scenarioFiredEventId": "',$scenarioFiredEventId,'",
+						"scenarioId": "',$scenarioId,'",
+						"scenarioOriginCd": "',$scenarioOriginCd,'",
+						"displayFlg": "',$displayFlg,'",
+"displayTypeCd":"',$displayTypeCd,'"
+					}
+				]
+			}
+		]
+	}'
+)]]></function>
+            </functions>
+          </function-context>
+          <connectors>
+            <connector class="fs" name="alerts">
+              <properties>
+                <property name="type"><![CDATA[sub]]></property>
+                <property name="snapshot"><![CDATA[false]]></property>
+                <property name="fsname"><![CDATA[/opt/sasinside/vicpol/data/alerts.csv]]></property>
+                <property name="fstype"><![CDATA[csv]]></property>
+              </properties>
+            </connector>
+            <connector class="rmq" name="rabbit_on_IIM">
+              <properties>
+                <property name="type"><![CDATA[sub]]></property>
+                <property name="buspersistence"><![CDATA[true]]></property>
+                <property name="rmqsslcacert"><![CDATA[/opt/sas/viya/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem]]></property>
+                <property name="rmqssl"><![CDATA[true]]></property>
+                <property name="snapshot"><![CDATA[false]]></property>
+                <property name="rmquserid"><![CDATA[sasclient]]></property>
+                <property name="rmqpassword"><![CDATA[sasclientpw]]></property>
+                <property name="rmqhost"><![CDATA[iim2.sasanzdemo.internal]]></property>
+                <property name="rmqport"><![CDATA[5671]]></property>
+                <property name="rmqexchange"><![CDATA[svi.tdc.exchange]]></property>
+                <property name="rmqtopic"><![CDATA[svi.tdc.ae.q]]></property>
+                <property name="rmqtype"><![CDATA[alertJson]]></property>
+                <property name="urlhostport"><![CDATA[iim2.sasanzdemo.com:9180]]></property>
+                <property name="numbufferedmsgs"><![CDATA[500]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-functional>
+        <window-filter pubsub="true" name="GEOFENCE_MATCHED">
+          <description><![CDATA[This window filters out location events that did not fall within any geofence.]]></description>
+          <expression><![CDATA[NOT ISNULL(distance)]]></expression>
+          <connectors>
+            <connector class="fs" name="geofence_matched" active="false">
+              <properties>
+                <property name="type"><![CDATA[sub]]></property>
+                <property name="snapshot"><![CDATA[false]]></property>
+                <property name="fsname"><![CDATA[/opt/sasinside/vicpol/data/geofence_matched.csv]]></property>
+                <property name="fstype"><![CDATA[csv]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-filter>
+        <window-source pubsub="true" index="pi_EMPTY" name="VI_NO_GO_AREAS">
+          <description><![CDATA[This window loads in the 'no go areas' child entity data from the VI database.]]></description>
+          <schema>
+            <fields>
+              <field name="no_go_areas_id" type="string" key="true"/>
+              <field name="person_id" type="string"/>
+              <field name="name" type="string"/>
+              <field name="address" type="string"/>
+              <field name="latitude" type="double"/>
+              <field name="longitude" type="double"/>
+              <field name="radius" type="double"/>
+            </fields>
+          </schema>
+          <connectors>
+            <connector class="db" name="vi_no_go_areas">
+              <properties>
+                <property name="type"><![CDATA[pub]]></property>
+                <property name="selectstatement"><![CDATA[select no_go_areas_id, person_id, name, address, latitude, longitude, radius from fdhdata.no_go_areas]]></property>
+                <property name="connectstring"><![CDATA[DRIVER=postgres;CATALOG='*';uid='dbmsowner';PWD='dSeDULMQEff2mMwKvBLQoLPqzJ0R3SN';SERVER='iim2.sasanzdemo.internal';PORT=5431;DB=SharedServices;SCHEMA=fdhdata;CONOPTS=(sslmode=require)]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-source>
+        <window-source pubsub="true" name="VI_PERSON">
+          <description><![CDATA[This window loads in the Person entity data from the VI database]]></description>
+          <schema>
+            <fields>
+              <field name="person_id" type="string" key="true"/>
+              <field name="firstname" type="string"/>
+              <field name="lastname" type="string"/>
+              <field name="device_id" type="string"/>
+              <field name="risk" type="string"/>
+            </fields>
+          </schema>
+          <connectors>
+            <connector class="db" name="vi_person">
+              <properties>
+                <property name="type"><![CDATA[pub]]></property>
+                <property name="selectstatement"><![CDATA[select person_id, firstname, lastname, email, risk from fdhdata.person]]></property>
+                <property name="connectstring"><![CDATA[DRIVER=postgres;CATALOG='*';uid='dbmsowner';PWD='dSeDULMQEff2mMwKvBLQoLPqzJ0R3SN';SERVER='iim2.sasanzdemo.internal';PORT=5431;DB=SharedServices;SCHEMA=fdhdata;CONOPTS=(sslmode=require)]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-source>
+        <window-join pubsub="true" name="FILTER_POI_JOIN">
+          <description><![CDATA[The purpose of this join window is to filter out any source data events that are not associated with an already existing person of interest entity. .For example if we have only one person of interest, James Morris we don't want to send location data for Morten Jammer through the Geofence window. This has the benefit of reducing the strain on the computationally expensive geofence window.]]></description>
+          <join type="inner" no-regenerates="true" right-index="pi_HASH">
+            <conditions>
+              <fields left="device_id" right="device_id"/>
+            </conditions>
+          </join>
+          <output>
+            <field-expr name="latitude" type="double"><![CDATA[l_latitude]]></field-expr>
+            <field-expr name="longitude" type="double"><![CDATA[l_longitude]]></field-expr>
+            <field-expr name="timestamp" type="stamp"><![CDATA[l_timestamp]]></field-expr>
+            <field-expr name="battery_level" type="string"><![CDATA[l_battery_level]]></field-expr>
+            <field-expr name="timestamp_readable" type="string"><![CDATA[l_timestamp_readable]]></field-expr>
+            <field-expr name="firstname" type="string"><![CDATA[r_firstname]]></field-expr>
+            <field-expr name="lastname" type="string"><![CDATA[r_lastname]]></field-expr>
+            <field-expr name="device_id" type="string"><![CDATA[r_device_id]]></field-expr>
+            <field-expr name="risk" type="string"><![CDATA[r_risk]]></field-expr>
+            <field-expr name="person_id" type="string"><![CDATA[r_person_id]]></field-expr>
+          </output>
+        </window-join>
+        <window-functional pubsub="true" name="PERSON_CLEANSER">
+          <description><![CDATA[This window cleanses the Person entity data. This is probably not needed for a POV.]]></description>
+          <schema>
+            <fields>
+              <field name="person_id" type="string" key="true"/>
+              <field name="firstname" type="string"/>
+              <field name="lastname" type="string"/>
+              <field name="device_id" type="string"/>
+              <field name="risk" type="string"/>
+            </fields>
+          </schema>
+          <function-context>
+            <functions>
+              <function name="device_id"><![CDATA[strip($device_id)]]></function>
+            </functions>
+          </function-context>
+        </window-functional>
+        <window-aggregate pubsub="true" index="pi_HASH" name="DEVICE_ID_AGGREGATOR">
+          <description><![CDATA[This window aggregates Person entities to device_id. We expect there should be a 1 to 1 mapping. We do this so we can add Person entity attributes to the streaming location data.]]></description>
+          <schema>
+            <fields>
+              <field name="person_id" type="string"/>
+              <field name="firstname" type="string"/>
+              <field name="lastname" type="string"/>
+              <field name="device_id" type="string" key="true"/>
+              <field name="risk" type="string"/>
+            </fields>
+          </schema>
+          <output>
+            <field-expr><![CDATA[ESP_aLast(person_id)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(firstname)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(lastname)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(risk)]]></field-expr>
+          </output>
+        </window-aggregate>
+        <window-join pubsub="true" name="FILTER_POI_LOCATION_JOIN">
+          <description><![CDATA[The purpose of this join is to ensure geofence alerts are only sent if the a person enters their specified geofence. Without this we would get alerts for people entering geofences that are not associated with them e.g. If James Morris entered Morten Jammers geofence.]]></description>
+          <join type="inner" no-regenerates="true" right-index="pi_HASH">
+            <conditions>
+              <fields left="person_id" right="person_id"/>
+              <fields left="no_go_areas_id" right="no_go_areas_id"/>
+            </conditions>
+          </join>
+          <output>
+            <field-expr name="latitude" type="double"><![CDATA[l_latitude]]></field-expr>
+            <field-expr name="longitude" type="double"><![CDATA[l_longitude]]></field-expr>
+            <field-expr name="timestamp" type="stamp"><![CDATA[l_timestamp]]></field-expr>
+            <field-expr name="battery_level" type="string"><![CDATA[l_battery_level]]></field-expr>
+            <field-expr name="timestamp_readable" type="string"><![CDATA[l_timestamp_readable]]></field-expr>
+            <field-expr name="firstname" type="string"><![CDATA[l_firstname]]></field-expr>
+            <field-expr name="lastname" type="string"><![CDATA[l_lastname]]></field-expr>
+            <field-expr name="device_id" type="string"><![CDATA[l_device_id]]></field-expr>
+            <field-expr name="risk" type="string"><![CDATA[l_risk]]></field-expr>
+            <field-expr name="person_id" type="string"><![CDATA[l_person_id]]></field-expr>
+            <field-expr name="description" type="string"><![CDATA[l_description]]></field-expr>
+            <field-expr name="distance" type="double"><![CDATA[l_distance]]></field-expr>
+            <field-expr name="no_go_areas_id" type="int64"><![CDATA[l_no_go_areas_id]]></field-expr>
+          </output>
+        </window-join>
+        <window-compute pubsub="true" name="KEY_CHANGER">
+          <schema>
+            <fields>
+              <field name="no_go_areas_id" type="string" key="true"/>
+              <field name="person_id" type="string" key="true"/>
+              <field name="name" type="string"/>
+              <field name="address" type="string"/>
+              <field name="latitude" type="double"/>
+              <field name="longitude" type="double"/>
+              <field name="radius" type="double"/>
+            </fields>
+          </schema>
+          <output>
+            <field-expr><![CDATA[name]]></field-expr>
+            <field-expr><![CDATA[address]]></field-expr>
+            <field-expr><![CDATA[latitude]]></field-expr>
+            <field-expr><![CDATA[longitude]]></field-expr>
+            <field-expr><![CDATA[radius]]></field-expr>
+          </output>
+        </window-compute>
+      </windows>
+      <edges>
+        <edge source="SOURCE" target="PARSER"/>
+        <edge source="ALERT_CREATOR" target="ALERT_JSON_CONSTRUCTOR"/>
+        <edge source="GEOFENCE" target="GEOFENCE_MATCHED"/>
+        <edge source="PARSER" target="FILTER_POI_JOIN" role="left"/>
+        <edge source="VI_PERSON" target="PERSON_CLEANSER"/>
+        <edge source="PERSON_CLEANSER" target="DEVICE_ID_AGGREGATOR"/>
+        <edge source="DEVICE_ID_AGGREGATOR" target="FILTER_POI_JOIN" role="right"/>
+        <edge source="FILTER_POI_JOIN" target="GEOFENCE" role="position"/>
+        <edge source="VI_NO_GO_AREAS" target="GEOFENCE" role="geometry"/>
+        <edge source="GEOFENCE_MATCHED" target="FILTER_POI_LOCATION_JOIN" role="left"/>
+        <edge source="FILTER_POI_LOCATION_JOIN" target="ALERT_CREATOR"/>
+        <edge source="FILTER_POI_LOCATION_JOIN" target="EMAIL_SENDER"/>
+        <edge source="VI_NO_GO_AREAS" target="KEY_CHANGER"/>
+        <edge source="KEY_CHANGER" target="FILTER_POI_LOCATION_JOIN" role="right"/>
+      </edges>
+    </contquery>
+  </contqueries>
+</project>
