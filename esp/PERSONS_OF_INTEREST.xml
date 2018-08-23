@@ -3,8 +3,8 @@
     <meta id="studioUploadedBy">videmo</meta>
     <meta id="studioUploaded">1534824313092</meta>
     <meta id="studioModifiedBy">videmo</meta>
-    <meta id="studioModified">1534987124996</meta>
-    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":355,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":355,"y":1220},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":350,"y":940},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_NO_GO_AREAS":{"x":920,"y":10},"VI_PERSON":{"x":620,"y":10}}}</meta>
+    <meta id="studioModified">1534990281120</meta>
+    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":345,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":345,"y":1210},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":345,"y":935},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_NO_GO_AREAS":{"x":920,"y":10},"VI_PERSON":{"x":620,"y":10}}}</meta>
   </metadata>
   <contqueries>
     <contquery name="PERSONS_OF_INTEREST_CQ" index="pi_EMPTY">
@@ -74,11 +74,11 @@
               <function name="timestamp_readable"><![CDATA[$timestamp_readable]]></function>
             </functions>
           </function-context>
-          <smtp host="mailhost.fyi.sas.com" port="25"/>
+          <smtp host="smtp.gmail.com" user="sasvppov@gmail.com" password="sasvictoriapolicepov" port="465"/>
           <delivery-channels>
             <email throttle-interval="5 minutes" name="test_email">
               <email-info>
-                <sender><![CDATA[$device_id]]></sender>
+                <sender><![CDATA[sasvppov@gmail.com]]></sender>
                 <recipients><![CDATA[$device_id]]></recipients>
                 <subject><![CDATA[Warning]]></subject>
                 <from><![CDATA[POIWarningSystem]]></from>
