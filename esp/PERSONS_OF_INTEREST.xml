@@ -3,8 +3,8 @@
     <meta id="studioUploadedBy">videmo</meta>
     <meta id="studioUploaded">1534824313092</meta>
     <meta id="studioModifiedBy">videmo</meta>
-    <meta id="studioModified">1534990281120</meta>
-    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":345,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":345,"y":1210},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":345,"y":935},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_NO_GO_AREAS":{"x":920,"y":10},"VI_PERSON":{"x":620,"y":10}}}</meta>
+    <meta id="studioModified">1535070229927</meta>
+    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":345,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":345,"y":1210},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":345,"y":935},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_PERSON_OF_INTEREST":{"x":620,"y":10},"VI_RISK_ZONES":{"x":920,"y":10}}}</meta>
   </metadata>
   <contqueries>
     <contquery name="PERSONS_OF_INTEREST_CQ" index="pi_EMPTY">
@@ -60,7 +60,7 @@
           <geofence coordinate-type="geographic" autosize-mesh="true" max-meshcells-per-geometry="500" output-multiple-results="true" log-invalid-geometry="true"/>
           <geometry desc-fieldname="name" x-fieldname="longitude" y-fieldname="latitude" radius-fieldname="radius" radius="0" data-separator=" "/>
           <position x-fieldname="longitude" y-fieldname="latitude" lookupdistance="0"/>
-          <output geoid-fieldname="no_go_areas_id" geodesc-fieldname="description" geodistance-fieldname="distance" eventnumber-fieldname="eventnum"/>
+          <output geoid-fieldname="poc_ch_risk_zones_id" geodesc-fieldname="description" geodistance-fieldname="distance" eventnumber-fieldname="eventnum"/>
         </window-geofence>
         <window-notification name="EMAIL_SENDER">
           <description><![CDATA[This window sends an email to someone if a geofence is breached.]]></description>
@@ -117,14 +117,14 @@ This email was sent at $timestamp_readable.]]></text-content>
           </schema>
           <output>
             <field-expr><![CDATA[id]]></field-expr>
-            <field-expr><![CDATA['person']]></field-expr>
-            <field-expr><![CDATA[person_id]]></field-expr>
+            <field-expr><![CDATA['poc_ie_person_of_int']]></field-expr>
+            <field-expr><![CDATA[poc_ie_person_of_int_id]]></field-expr>
             <field-expr><![CDATA[100*(1/distance)]]></field-expr>
             <field-expr><![CDATA['Person of Interest']]></field-expr>
             <field-expr><![CDATA['Persons of Interest']]></field-expr>
             <field-expr><![CDATA['queue_default']]></field-expr>
             <field-expr><![CDATA[id]]></field-expr>
-            <field-expr><![CDATA[no_go_areas_id]]></field-expr>
+            <field-expr><![CDATA[poc_ch_risk_zones_id]]></field-expr>
             <field-expr><![CDATA[description]]></field-expr>
             <field-expr><![CDATA['Persons of Interest']]></field-expr>
             <field-expr><![CDATA[true]]></field-expr>
@@ -212,12 +212,12 @@ This email was sent at $timestamp_readable.]]></text-content>
             </connector>
           </connectors>
         </window-filter>
-        <window-source pubsub="true" index="pi_EMPTY" name="VI_NO_GO_AREAS">
+        <window-source pubsub="true" index="pi_EMPTY" name="VI_RISK_ZONES">
           <description><![CDATA[This window loads in the 'no go areas' child entity data from the VI database.]]></description>
           <schema>
             <fields>
-              <field name="no_go_areas_id" type="string" key="true"/>
-              <field name="person_id" type="string"/>
+              <field name="poc_ch_risk_zones_id" type="string" key="true"/>
+              <field name="poc_ie_person_of_int_id" type="string"/>
               <field name="name" type="string"/>
               <field name="address" type="string"/>
               <field name="latitude" type="double"/>
@@ -229,28 +229,29 @@ This email was sent at $timestamp_readable.]]></text-content>
             <connector class="db" name="vi_no_go_areas">
               <properties>
                 <property name="type"><![CDATA[pub]]></property>
-                <property name="selectstatement"><![CDATA[select no_go_areas_id, person_id, name, address, latitude, longitude, radius from fdhdata.no_go_areas]]></property>
+                <property name="selectstatement"><![CDATA[select poc_ch_risk_zones_id, poc_ie_person_of_int_id, name, address, latitude, longitude, radius from fdhdata.poc_ch_risk_zones]]></property>
                 <property name="connectstring"><![CDATA[DRIVER=postgres;CATALOG='*';uid='dbmsowner';PWD='dSeDULMQEff2mMwKvBLQoLPqzJ0R3SN';SERVER='iim2.sasanzdemo.internal';PORT=5431;DB=SharedServices;SCHEMA=fdhdata;CONOPTS=(sslmode=require)]]></property>
               </properties>
             </connector>
           </connectors>
         </window-source>
-        <window-source pubsub="true" name="VI_PERSON">
+        <window-source pubsub="true" name="VI_PERSON_OF_INTEREST">
           <description><![CDATA[This window loads in the Person entity data from the VI database]]></description>
           <schema>
             <fields>
-              <field name="person_id" type="string" key="true"/>
+              <field name="poc_ie_person_of_int_id" type="string" key="true"/>
               <field name="firstname" type="string"/>
               <field name="lastname" type="string"/>
+              <field name="gender" type="string"/>
               <field name="device_id" type="string"/>
               <field name="risk" type="string"/>
             </fields>
           </schema>
           <connectors>
-            <connector class="db" name="vi_person">
+            <connector class="db" name="vi_person_of_interest">
               <properties>
                 <property name="type"><![CDATA[pub]]></property>
-                <property name="selectstatement"><![CDATA[select person_id, firstname, lastname, email, risk from fdhdata.person]]></property>
+                <property name="selectstatement"><![CDATA[select poc_ie_person_of_int_id, firstname, lastname, gender, device_id, risk from fdhdata.poc_ie_person_of_int]]></property>
                 <property name="connectstring"><![CDATA[DRIVER=postgres;CATALOG='*';uid='dbmsowner';PWD='dSeDULMQEff2mMwKvBLQoLPqzJ0R3SN';SERVER='iim2.sasanzdemo.internal';PORT=5431;DB=SharedServices;SCHEMA=fdhdata;CONOPTS=(sslmode=require)]]></property>
               </properties>
             </connector>
@@ -273,16 +274,17 @@ This email was sent at $timestamp_readable.]]></text-content>
             <field-expr name="lastname" type="string"><![CDATA[r_lastname]]></field-expr>
             <field-expr name="device_id" type="string"><![CDATA[r_device_id]]></field-expr>
             <field-expr name="risk" type="string"><![CDATA[r_risk]]></field-expr>
-            <field-expr name="person_id" type="string"><![CDATA[r_person_id]]></field-expr>
+            <field-expr name="poc_ie_person_of_int_id" type="string"><![CDATA[r_poc_ie_person_of_int_id]]></field-expr>
           </output>
         </window-join>
         <window-functional pubsub="true" name="PERSON_CLEANSER">
           <description><![CDATA[This window cleanses the Person entity data. This is probably not needed for a POV.]]></description>
           <schema>
             <fields>
-              <field name="person_id" type="string" key="true"/>
+              <field name="poc_ie_person_of_int_id" type="string" key="true"/>
               <field name="firstname" type="string"/>
               <field name="lastname" type="string"/>
+              <field name="gender" type="string"/>
               <field name="device_id" type="string"/>
               <field name="risk" type="string"/>
             </fields>
@@ -297,26 +299,28 @@ This email was sent at $timestamp_readable.]]></text-content>
           <description><![CDATA[This window aggregates Person entities to device_id. We expect there should be a 1 to 1 mapping. We do this so we can add Person entity attributes to the streaming location data.]]></description>
           <schema>
             <fields>
-              <field name="person_id" type="string"/>
+              <field name="poc_ie_person_of_int_id" type="string"/>
               <field name="firstname" type="string"/>
               <field name="lastname" type="string"/>
               <field name="device_id" type="string" key="true"/>
               <field name="risk" type="string"/>
+              <field name="gender" type="string"/>
             </fields>
           </schema>
           <output>
-            <field-expr><![CDATA[ESP_aLast(person_id)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(poc_ie_person_of_int_id)]]></field-expr>
             <field-expr><![CDATA[ESP_aLast(firstname)]]></field-expr>
             <field-expr><![CDATA[ESP_aLast(lastname)]]></field-expr>
             <field-expr><![CDATA[ESP_aLast(risk)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(gender)]]></field-expr>
           </output>
         </window-aggregate>
         <window-join pubsub="true" name="FILTER_POI_LOCATION_JOIN">
           <description><![CDATA[The purpose of this join is to ensure geofence alerts are only sent if the a person enters their specified geofence. Without this we would get alerts for people entering geofences that are not associated with them e.g. If James Morris entered Morten Jammers geofence.]]></description>
           <join type="inner" no-regenerates="true" right-index="pi_HASH">
             <conditions>
-              <fields left="person_id" right="person_id"/>
-              <fields left="no_go_areas_id" right="no_go_areas_id"/>
+              <fields left="poc_ie_person_of_int_id" right="poc_ie_person_of_int_id"/>
+              <fields left="poc_ch_risk_zones_id" right="poc_ch_risk_zones_id"/>
             </conditions>
           </join>
           <output>
@@ -329,17 +333,17 @@ This email was sent at $timestamp_readable.]]></text-content>
             <field-expr name="lastname" type="string"><![CDATA[l_lastname]]></field-expr>
             <field-expr name="device_id" type="string"><![CDATA[l_device_id]]></field-expr>
             <field-expr name="risk" type="string"><![CDATA[l_risk]]></field-expr>
-            <field-expr name="person_id" type="string"><![CDATA[l_person_id]]></field-expr>
+            <field-expr name="poc_ie_person_of_int_id" type="string"><![CDATA[l_poc_ie_person_of_int_id]]></field-expr>
+            <field-expr name="poc_ch_risk_zones_id" type="int64"><![CDATA[l_poc_ch_risk_zones_id]]></field-expr>
             <field-expr name="description" type="string"><![CDATA[l_description]]></field-expr>
             <field-expr name="distance" type="double"><![CDATA[l_distance]]></field-expr>
-            <field-expr name="no_go_areas_id" type="int64"><![CDATA[l_no_go_areas_id]]></field-expr>
           </output>
         </window-join>
         <window-compute pubsub="true" name="KEY_CHANGER">
           <schema>
             <fields>
-              <field name="no_go_areas_id" type="string" key="true"/>
-              <field name="person_id" type="string" key="true"/>
+              <field name="poc_ch_risk_zones_id" type="string" key="true"/>
+              <field name="poc_ie_person_of_int_id" type="string" key="true"/>
               <field name="name" type="string"/>
               <field name="address" type="string"/>
               <field name="latitude" type="double"/>
@@ -361,16 +365,16 @@ This email was sent at $timestamp_readable.]]></text-content>
         <edge source="ALERT_CREATOR" target="ALERT_JSON_CONSTRUCTOR"/>
         <edge source="GEOFENCE" target="GEOFENCE_MATCHED"/>
         <edge source="PARSER" target="FILTER_POI_JOIN" role="left"/>
-        <edge source="VI_PERSON" target="PERSON_CLEANSER"/>
+        <edge source="VI_PERSON_OF_INTEREST" target="PERSON_CLEANSER"/>
         <edge source="PERSON_CLEANSER" target="DEVICE_ID_AGGREGATOR"/>
         <edge source="DEVICE_ID_AGGREGATOR" target="FILTER_POI_JOIN" role="right"/>
         <edge source="FILTER_POI_JOIN" target="GEOFENCE" role="position"/>
-        <edge source="VI_NO_GO_AREAS" target="GEOFENCE" role="geometry"/>
         <edge source="GEOFENCE_MATCHED" target="FILTER_POI_LOCATION_JOIN" role="left"/>
         <edge source="FILTER_POI_LOCATION_JOIN" target="ALERT_CREATOR"/>
         <edge source="FILTER_POI_LOCATION_JOIN" target="EMAIL_SENDER"/>
-        <edge source="VI_NO_GO_AREAS" target="KEY_CHANGER"/>
+        <edge source="VI_RISK_ZONES" target="KEY_CHANGER"/>
         <edge source="KEY_CHANGER" target="FILTER_POI_LOCATION_JOIN" role="right"/>
+        <edge source="VI_RISK_ZONES" target="GEOFENCE" role="geometry"/>
       </edges>
     </contquery>
   </contqueries>
