@@ -3,8 +3,8 @@
     <meta id="studioUploadedBy">videmo</meta>
     <meta id="studioUploaded">1534824313092</meta>
     <meta id="studioModifiedBy">videmo</meta>
-    <meta id="studioModified">1535070229927</meta>
-    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERT_CREATOR":{"x":345,"y":1080},"ALERT_JSON_CONSTRUCTOR":{"x":345,"y":1210},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":115,"y":1080},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":345,"y":935},"GEOFENCE":{"x":345,"y":670},"GEOFENCE_MATCHED":{"x":345,"y":800},"KEY_CHANGER":{"x":920,"y":160},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"SOURCE":{"x":340,"y":5},"VI_PERSON_OF_INTEREST":{"x":620,"y":10},"VI_RISK_ZONES":{"x":920,"y":10}}}</meta>
+    <meta id="studioModified">1535341133957</meta>
+    <meta id="layout">{"PERSONS_OF_INTEREST":{"ALERT_CREATOR":{"x":375,"y":710},"GEOFENCE":{"x":105,"y":535},"LOOKUP_SOURCE":{"x":380,"y":60},"PARSER":{"x":50,"y":325},"SMS_SENDER":{"x":105,"y":715},"SOURCE":{"x":25,"y":60}},"PERSONS_OF_INTEREST_CQ":{"ALERTED_POI_PREVIOUS_LOCATION":{"x":60,"y":1320},"ALERT_CREATOR":{"x":340,"y":1320},"ALERT_JSON_CONSTRUCTOR":{"x":340,"y":1445},"DEVICE_ID_AGGREGATOR":{"x":620,"y":290},"EMAIL_SENDER":{"x":95,"y":1065},"FILTER_POI_JOIN":{"x":340,"y":465},"FILTER_POI_LOCATION_JOIN":{"x":340,"y":950},"GEOFENCE":{"x":340,"y":675},"GEOFENCE_MATCHED":{"x":340,"y":800},"KEY_CHANGER":{"x":920,"y":160},"LOCATION_RETENTION_2HRS":{"x":60,"y":665},"ONLY_ALERT_EVERY_2HR":{"x":340,"y":1070},"PARSER":{"x":340,"y":165},"PERSON_CLEANSER":{"x":620,"y":165},"RISKZONE_PER_POI":{"x":340,"y":1195},"SOURCE":{"x":340,"y":5},"VI_PERSON_OF_INTEREST":{"x":620,"y":10},"VI_RISK_ZONES":{"x":920,"y":10}}}</meta>
   </metadata>
   <contqueries>
     <contquery name="PERSONS_OF_INTEREST_CQ" index="pi_EMPTY">
@@ -359,6 +359,72 @@ This email was sent at $timestamp_readable.]]></text-content>
             <field-expr><![CDATA[radius]]></field-expr>
           </output>
         </window-compute>
+        <window-copy pubsub="true" index="pi_HASH" name="LOCATION_RETENTION_2HRS">
+          <retention type="bytime_sliding"><![CDATA[2 hours]]></retention>
+        </window-copy>
+        <window-join pubsub="true" index="pi_HASH" output-insert-only="true" name="ALERTED_POI_PREVIOUS_LOCATION">
+          <join type="inner" no-regenerates="true" right-index="pi_HASH">
+            <conditions>
+              <fields left="poc_ie_person_of_int_id" right="poc_ie_person_of_int_id"/>
+            </conditions>
+          </join>
+          <output>
+            <field-expr name="latitude" type="double"><![CDATA[l_latitude]]></field-expr>
+            <field-expr name="longitude" type="double"><![CDATA[l_longitude]]></field-expr>
+            <field-expr name="device_id" type="string"><![CDATA[l_device_id]]></field-expr>
+            <field-expr name="timestamp" type="stamp"><![CDATA[l_timestamp]]></field-expr>
+          </output>
+          <connectors>
+            <connector class="db" name="alerted_poi_previous_location">
+              <properties>
+                <property name="type"><![CDATA[sub]]></property>
+                <property name="snapshot"><![CDATA[false]]></property>
+                <property name="connectstring"><![CDATA[DRIVER=postgres;CATALOG='*';uid='dbmsowner';PWD='dSeDULMQEff2mMwKvBLQoLPqzJ0R3SN';SERVER='iim2.sasanzdemo.internal';PORT=5431;DB=SharedServices;SCHEMA=fdhdata;CONOPTS=(sslmode=require)]]></property>
+                <property name="desttablename"><![CDATA[poc_alerted_poi_prev_loc]]></property>
+              </properties>
+            </connector>
+          </connectors>
+        </window-join>
+        <window-copy pubsub="true" index="pi_HASH" name="ONLY_ALERT_EVERY_2HR">
+          <description><![CDATA[This window helps ensure we only alert every two hours per person of interest, geo location combination.]]></description>
+          <retention type="bytime_sliding"><![CDATA[2 hours]]></retention>
+        </window-copy>
+        <window-aggregate pubsub="true" index="pi_HASH" output-insert-only="true" name="RISKZONE_PER_POI">
+          <schema>
+            <fields>
+              <field name="poc_ie_person_of_int_id" type="string" key="true"/>
+              <field name="poc_ch_risk_zones_id" type="int64" key="true"/>
+              <field name="latitude" type="double"/>
+              <field name="longitude" type="double"/>
+              <field name="timestamp" type="stamp"/>
+              <field name="battery_level" type="string"/>
+              <field name="timestamp_readable" type="string"/>
+              <field name="firstname" type="string"/>
+              <field name="lastname" type="string"/>
+              <field name="device_id" type="string"/>
+              <field name="risk" type="string"/>
+              <field name="description" type="string"/>
+              <field name="distance" type="double"/>
+              <field name="eventnum" type="int64"/>
+              <field name="id" type="string"/>
+            </fields>
+          </schema>
+          <output>
+            <field-expr><![CDATA[ESP_aLast(latitude)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(longitude)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(timestamp)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(battery_level)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(timestamp_readable)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(firstname)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(lastname)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(device_id)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(risk)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(description)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(distance)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(eventnum)]]></field-expr>
+            <field-expr><![CDATA[ESP_aLast(id)]]></field-expr>
+          </output>
+        </window-aggregate>
       </windows>
       <edges>
         <edge source="SOURCE" target="PARSER"/>
@@ -370,11 +436,16 @@ This email was sent at $timestamp_readable.]]></text-content>
         <edge source="DEVICE_ID_AGGREGATOR" target="FILTER_POI_JOIN" role="right"/>
         <edge source="FILTER_POI_JOIN" target="GEOFENCE" role="position"/>
         <edge source="GEOFENCE_MATCHED" target="FILTER_POI_LOCATION_JOIN" role="left"/>
-        <edge source="FILTER_POI_LOCATION_JOIN" target="ALERT_CREATOR"/>
         <edge source="FILTER_POI_LOCATION_JOIN" target="EMAIL_SENDER"/>
         <edge source="VI_RISK_ZONES" target="KEY_CHANGER"/>
         <edge source="KEY_CHANGER" target="FILTER_POI_LOCATION_JOIN" role="right"/>
         <edge source="VI_RISK_ZONES" target="GEOFENCE" role="geometry"/>
+        <edge source="FILTER_POI_JOIN" target="LOCATION_RETENTION_2HRS"/>
+        <edge source="ONLY_ALERT_EVERY_2HR" target="RISKZONE_PER_POI"/>
+        <edge source="FILTER_POI_LOCATION_JOIN" target="ONLY_ALERT_EVERY_2HR"/>
+        <edge source="RISKZONE_PER_POI" target="ALERT_CREATOR"/>
+        <edge source="LOCATION_RETENTION_2HRS" target="ALERTED_POI_PREVIOUS_LOCATION" role="left"/>
+        <edge source="RISKZONE_PER_POI" target="ALERTED_POI_PREVIOUS_LOCATION" role="right"/>
       </edges>
     </contquery>
   </contqueries>
