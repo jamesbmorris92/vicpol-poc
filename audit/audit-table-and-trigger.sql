@@ -1,6 +1,11 @@
+DROP SEQUENCE public.poc_sq_poi_audit;
+
+CREATE SEQUENCE public.poc_sq_poi_audit INCREMENT BY 1 START WITH 1 MAXVALUE 999999999999999999 MINVALUE 1 NO CYCLE CACHE 20;;
+
 DROP TABLE public.poc_ie_poi_audit CASCADE;
 
 CREATE TABLE public.poc_ie_poi_audit(
+	audit_sk          character varying NOT NULL,
     operation         character varying NOT NULL,
     audit_stamp             timestamp NOT NULL,
     audit_userid            text      NOT NULL,
@@ -25,13 +30,13 @@ CREATE OR REPLACE FUNCTION poc_ie_poi_audit_func() RETURNS TRIGGER AS $poc_ie_po
         -- make use of the special variable TG_OP to work out the operation.
         --
         IF (TG_OP = 'DELETE') THEN
-            INSERT INTO public.poc_ie_poi_audit SELECT TG_OP, now(), OLD.last_updated_by_user_id, OLD.*;
+            INSERT INTO public.poc_ie_poi_audit SELECT nextval('public.poc_sq_poi_audit'), TG_OP, now(), OLD.last_updated_by_user_id, OLD.*;
             RETURN OLD;
         ELSIF (TG_OP = 'UPDATE') THEN
-            INSERT INTO public.poc_ie_poi_audit SELECT TG_OP, now(), NEW.last_updated_by_user_id, NEW.*;
+            INSERT INTO public.poc_ie_poi_audit SELECT nextval('public.poc_sq_poi_audit'), TG_OP, now(), NEW.last_updated_by_user_id, NEW.*;
             RETURN NEW;
         ELSIF (TG_OP = 'INSERT') THEN
-            INSERT INTO public.poc_ie_poi_audit SELECT TG_OP, now(), NEW.last_updated_by_user_id, NEW.*;
+            INSERT INTO public.poc_ie_poi_audit SELECT nextval('public.poc_sq_poi_audit'), TG_OP, now(), NEW.last_updated_by_user_id, NEW.*;
             RETURN NEW;
         END IF;
         RETURN NULL; -- result is ignored since this is an AFTER trigger
